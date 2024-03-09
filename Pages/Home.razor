@@ -1,0 +1,125 @@
+﻿@page "/"
+
+<PageTitle>Infija a Postfija</PageTitle>
+
+<h1>Conversión y Evaluación <br />de Expresión Infija a Postfija</h1>
+
+<input placeholder="Ingrese la Expreción Infija" class=" form-control mb-2" type="text" @bind="expresionInfija" />
+
+<button class="btn btn-primary" @onclick="GuardarExpresion">Convertir y Evaluar</button>
+
+<!-- Resultado en pantalla -->
+@if (pilaExpresion != null && pilaExpresion.Count > 0)
+{
+	<h3 class="mt-3 mb-3 fs-2">Expresión Postfija:</h3>
+	<p class="fs-4 border-bottom">@string.Join("", pilaExpresion.Reverse())</p>
+}
+
+@if (resultado != null)
+{
+	<h3 class="fs-3">Resultado de la Evaluación:</h3>
+	<p class="fs-4 border-bottom">@resultado</p>
+}
+
+@code {
+	// Variables y pilas para la conversión y evaluación
+	string expresionInfija = "";
+	Stack<char> pilaExpresion = new Stack<char>();
+	Stack<char> pilaOperadores = new Stack<char>();
+	double? resultado = null;
+
+	// Funcion para obtener la precedencia de los operadores
+	int Precedencia(char operador)
+	{
+		switch (operador)
+		{
+			case '+':
+			case '-':
+				return 1;
+			case '*':
+			case '/':
+				return 2;
+			case '^':
+				return 3;
+			default:
+				return -1;
+		}
+	}
+
+	// Funcion para guardar la expresion en la pila
+	void GuardarExpresion()
+	{
+		pilaExpresion.Clear();
+		pilaOperadores.Clear();
+
+		foreach (char caracter in expresionInfija)
+		{
+			if (caracter == '(')
+			{
+				pilaOperadores.Push(caracter);
+			}
+			else if (caracter == ')')
+			{
+				while (pilaOperadores.Count > 0 && pilaOperadores.Peek() != '(')
+				{
+					pilaExpresion.Push(pilaOperadores.Pop());
+				}
+				if (pilaOperadores.Count > 0) pilaOperadores.Pop();
+			}
+			else if (caracter == '+' || caracter == '-' || caracter == '*' || caracter == '/' || caracter == '^')
+			{
+				while (pilaOperadores.Count > 0 && Precedencia(caracter) <= Precedencia(pilaOperadores.Peek()))
+				{
+					pilaExpresion.Push(pilaOperadores.Pop());
+				}
+				pilaOperadores.Push(caracter);
+			}
+			else
+			{
+				pilaExpresion.Push(caracter);
+			}
+		}
+
+		while (pilaOperadores.Count > 0)
+		{
+			pilaExpresion.Push(pilaOperadores.Pop());
+		}
+
+		// LLama a la funcion para evaluar la expresion
+		EvaluarExpresion();
+	}
+
+	// Funcion para evaluar la expresion
+	void EvaluarExpresion()
+	{
+		Stack<double> pilaEvaluacion = new Stack<double>();
+
+		foreach (char simbolo in pilaExpresion.Reverse())
+		{
+			if (char.IsDigit(simbolo))
+			{
+				pilaEvaluacion.Push(double.Parse(simbolo.ToString()));
+			}
+			else
+			{
+				if (pilaEvaluacion.Count >= 2)
+				{
+					double b = pilaEvaluacion.Pop();
+					double a = pilaEvaluacion.Pop();
+
+					switch (simbolo)
+					{
+						case '+': pilaEvaluacion.Push(a + b); break;
+						case '-': pilaEvaluacion.Push(a - b); break;
+						case '*': pilaEvaluacion.Push(a * b); break;
+						case '/': pilaEvaluacion.Push(a / b); break;
+						case '^': pilaEvaluacion.Push(Math.Pow(a, b)); break;
+						default: throw new ArgumentException($"Operador desconocido: {simbolo}");
+					}
+				}
+			}
+		}
+
+		resultado = pilaEvaluacion.Any() ? pilaEvaluacion.Pop() : null;
+	}
+}

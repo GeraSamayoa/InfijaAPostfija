@@ -1,0 +1,167 @@
+﻿@page "/counter"
+
+<PageTitle>Infija a Postfija</PageTitle>
+
+<h1>Conversión y Evaluación <br />de Expresión Infija a Postfija</h1>
+
+<input placeholder="Ingrese la Expresión Infija" class="form-control mb-2" type="text" @bind="expresionInfija" />
+<!-- 5 + 3 * 5 -->
+
+<button class="btn btn-primary" @onclick="ConvertirExpresion">Convertir y Evaluar</button>
+
+<!-- Mostrar expresionInfijaArray -->
+
+
+    <h3 class="mt-3 mb-3 fs-2">Expresión Infija:</h3>
+    <p class="fs-4 border-bottom">@expresionInfija</p>
+    @if (pilaPostfija != null && pilaPostfija.ContarElementos() > 0)
+    {
+        <h3 class="mt-3 mb-3 fs-2">Expresión Postfija:</h3>
+        <p class="fs-4 border-bottom">Postfija: @string.Join("", pilaPostfija.Recorrer())</p>
+    }
+    @if (resultado.HasValue)
+    {
+        <p>Resultado: @resultado</p>
+    }
+
+@code {
+    string expresionInfija = "";
+    Pila<string> pilaPostfija = new Pila<string>(20);
+    Pila<char> pilaOperadores = new Pila<char>(20);
+    double? resultado = null;
+    char[] expresionInfijaArray = new char[20];
+
+    void ConvertirExpresion()
+    {
+        expresionInfijaArray = expresionInfija.ToCharArray();
+
+        pilaPostfija.LimpiarPila();
+        pilaOperadores.LimpiarPila();
+
+        string numero = "";
+
+        foreach (char caracter in expresionInfijaArray)
+        {
+            if (char.IsDigit(caracter))
+            {
+                numero += caracter;
+            }
+            else
+            {
+                if (!string.IsNullOrEmpty(numero))
+                {
+                    pilaPostfija.Apilar(numero);
+                    numero = "";
+                }
+
+                if (caracter == '(')
+                {
+                    pilaOperadores.Apilar(caracter);
+                }
+                else if (caracter == ')')
+                {
+                    while (pilaOperadores.Peek() != '(')
+                    {
+                        pilaPostfija.Apilar(pilaOperadores.Desapilar().ToString());
+                    }
+                    pilaOperadores.Desapilar(); // Descartar el '(' de la pila de operadores
+                }
+                else if (caracter == '+' || caracter == '-' || caracter == '*' || caracter == '/' || caracter == '^')
+                {
+                    while (pilaOperadores.ContarElementos() > 0 && Precedencia(pilaOperadores.Peek()) >= Precedencia(caracter))
+                    {
+                        pilaPostfija.Apilar(pilaOperadores.Desapilar().ToString());
+                    }
+                    pilaOperadores.Apilar(caracter);
+                }
+            }
+        }
+
+        if (!string.IsNullOrEmpty(numero))
+        {
+            pilaPostfija.Apilar(numero);
+        }
+
+        // Desapilar cualquier operador que quede en la pila de operadores y apilarlo en la pila postfija
+        while (!pilaOperadores.PilaVacia())
+        {
+            pilaPostfija.Apilar(pilaOperadores.Desapilar().ToString());
+        }
+
+        // Evaluar la expresión postfija
+        resultado = EvaluarExpresionPostfija();
+    }
+
+
+    double EvaluarExpresionPostfija()
+    {
+        Pila<double> pilaOperandos = new Pila<double>(20);
+
+        foreach (var elemento in pilaPostfija.Recorrer())
+        {
+            if (double.TryParse(elemento, out double operando))
+            {
+                // Si es un operando, apílalo en la pila de operandos
+                pilaOperandos.Apilar(operando);
+            }
+            else
+            {
+                // Si es un operador, desapila dos operandos, realiza la operación y apila el resultado
+                if (pilaOperandos.ContarElementos() < 2)
+                {
+                    // Manejar el error de falta de operandos
+                    Console.WriteLine("Error: Falta de operandos para realizar la operación.");
+                    return 0;
+                }
+
+                double segundoOperando = pilaOperandos.Desapilar();
+                double primerOperando = pilaOperandos.Desapilar();
+                switch (elemento)
+                {
+                    case "+":
+                        pilaOperandos.Apilar(primerOperando + segundoOperando);
+                        break;
+                    case "-":
+                        pilaOperandos.Apilar(primerOperando - segundoOperando);
+                        break;
+                    case "*":
+                        pilaOperandos.Apilar(primerOperando * segundoOperando);
+                        break;
+                    case "/":
+                        pilaOperandos.Apilar(primerOperando / segundoOperando);
+                        break;
+                    case "^":
+                        pilaOperandos.Apilar(Math.Pow(primerOperando, segundoOperando));
+                        break;
+                    default:
+                        // Manejar el error de operador no válido
+                        Console.WriteLine("Error: Operador no válido.");
+                        return 0;
+                }
+            }
+        }
+
+        // Al final de la evaluación, el resultado estará en el tope de la pila de operandos
+        return pilaOperandos.Peek();
+    }
+
+
+
+
+    int Precedencia(char operador)
+    {
+        switch (operador)
+        {
+            case '+':
+            case '-':
+                return 1;
+            case '*':
+            case '/':
+                return 2;
+            case '^':
+                return 3;
+            default:
+                return -1;
+        }
+    }
+}
